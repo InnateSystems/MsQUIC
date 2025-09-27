@@ -2,19 +2,12 @@ using Tar, SHA
 
 # Function to create artifact for a single platform
 function create_msquic_artifact()
-    # Create temporary directory
-    tmp_dir = mktempdir()
-
-    # Create lib directory in temp directory
-    lib_dir = joinpath(tmp_dir, "lib")
-    mkdir(lib_dir)
-
     # Copy the library file
-    cp("vcpkg/installed/arm64-osx/lib/libmsquic.2.4.8.dylib", joinpath(lib_dir, "libmsquic.dylib"))
+    libpath = "vcpkg/installed/arm64-osx/"
 
     # Create tar file
     tar_file = "artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar"
-    Tar.create(tmp_dir, tar_file)
+    Tar.create(libpath, tar_file)
 
     # Compress with gzip
     run(pipeline(`gzip -c $tar_file`, stdout="artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"))
@@ -33,7 +26,7 @@ function create_msquic_artifact()
     println("SHA1 (approximate git-tree-sha1): $sha1_hash")
 
     # Clean up
-    rm(tmp_dir, recursive=true)
+    rm(libpath, recursive=true)
 
     return sha1_hash, sha256_hash
 end
