@@ -1,0 +1,12 @@
+# Artifacts.toml - MsQUIC Binary Artifacts
+# This file will be populated with actual artifacts when they are built and hosted
+
+# Example structure (uncomment and populate with real values when ready):
+# [[MsQUIC]]
+# arch = "x86_64"
+# git-tree-sha1 = "example_sha1_hash"
+# os = "macos"
+# 
+#     [[MsQUIC.download]]
+#     sha256 = "example_sha256_hash"
+#     url = "https://github.com/yourusername/MsQUIC.jl/releases/download/v0.1.0/MsQUIC.v2.4.8.x86_64-macos.tar.gz"

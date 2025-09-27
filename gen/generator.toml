@@ -1,0 +1,8 @@
+name = "MsQUIC"
+version = "2.4.8"
+
+[general]
+prologue = "prologue.jl"
+
+[headers]
+msquic = "deps/vcpkg/installed/arm64-osx/include/msquic.h"

@@ -1,0 +1,23 @@
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.13.0-DEV"
+manifest_format = "2.0"
+project_hash = "dff92b6679c7a4b61b6b6340d75c1ad2f915726d"
+
+[[deps.Base64]]
+uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+version = "1.11.0"
+
+[[deps.MsQUIC]]
+deps = ["Base64", "SHA", "Sockets"]
+path = "."
+uuid = "85f14c65-7748-4b09-a372-469127714dfa"
+version = "0.1.0"
+
+[[deps.SHA]]
+uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+version = "0.7.0"
+
+[[deps.Sockets]]
+uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+version = "1.11.0"

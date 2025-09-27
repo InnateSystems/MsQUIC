@@ -1,0 +1,13 @@
+# Julia
+Manifest.toml
+*.jl.cov
+*.jl.mem
+*.jld
+.DS_Store
+
+# Build artifacts
+deps/
+lib/
+
+# Generated files
+gen/*.tar.gz
