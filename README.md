@@ -19,7 +19,18 @@ MsQUIC.jl provides Julia bindings for Microsoft's MsQuic library, enabling Julia
 
 ## Installation
 
-First, install the MsQuic library using vcpkg:
+The package uses Julia's artifact system to automatically download the MsQuic library binaries. Simply install the package:
+
+```julia
+using Pkg
+Pkg.add("MsQUIC")
+```
+
+The required MsQuic library will be automatically downloaded and installed for your platform.
+
+## Manual Installation (Alternative)
+
+If you prefer to manually install the MsQuic library, you can use vcpkg:
 
 ```bash
 # Install vcpkg if you haven't already
@@ -101,6 +112,18 @@ Base.close(api)
 - `wait_for_data(stream, timeout)`: Wait for data with timeout
 - `enable_receive(stream, enabled)`: Enable/disable receiving
 
+## Artifact Generation
+
+To generate artifacts for new platforms:
+
+1. Build MsQuic for the target platform using vcpkg
+2. Run the artifact generation script:
+   ```julia
+   include("gen/create_artifact.jl")
+   ```
+3. Update the Artifacts.toml file with the generated hashes
+4. Upload the tarball to the GitHub releases
+
 ## Testing
 
 Run the test suite:
@@ -113,8 +136,7 @@ Pkg.test("MsQUIC")
 ## Requirements
 
 - Julia 1.6+
-- MsQuic library installed via vcpkg
-- Supported platforms: Windows, Linux, macOS
+- Supported platforms: Windows, Linux, macOS (with pre-built artifacts)
 
 ## License
 

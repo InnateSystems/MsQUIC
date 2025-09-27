@@ -1,44 +1,76 @@
 module MsQUIC
 
+using Libdl
+using Artifacts
+
 export MsQuicAPI, MsQuicConnection, MsQuicStream, MsQuicConfiguration, MsQuicRegistration, MsQuicListener
 export connect, listen, send_data, receive_data, close, open_stream, close_stream, start_stream
 export QUIC_STATUS_SUCCESS, QUIC_STATUS_PENDING, QUIC_STATUS_CONTINUE
 
-# Load the MsQuic library from deps directory
-# Future: Will support Julia artifacts system
-const libmsquic = begin
-    # Try common installation paths
-    paths_to_try = [
-        joinpath(@__DIR__, "..", "deps", "vcpkg", "installed", "arm64-osx", "lib", "libmsquic.dylib"),
-        joinpath(@__DIR__, "..", "deps", "vcpkg", "installed", "x64-osx", "lib", "libmsquic.dylib"),
-        joinpath(@__DIR__, "..", "deps", "vcpkg", "installed", "x64-linux", "lib", "libmsquic.so"),
-        joinpath(@__DIR__, "..", "deps", "vcpkg", "installed", "x64-windows", "lib", "msquic.dll")
-    ]
+# Global variable to store the library handle
+const libmsquic_handle = Ref{Ptr{Cvoid}}(C_NULL)
+
+"""
+    __init__()
+
+Initialize the MsQuic library when the module is loaded.
+"""
+function __init__()
+    # Try to load the MsQuic library from artifacts first
+    lib_names = String[]
     
-    found_path = ""
-    for path in paths_to_try
-        if isfile(path)
-            found_path = path
+    # Try to load the library from the artifact
+    try
+        # Use the artifact string macro to get the path
+        lib_path = joinpath(artifact"MsQUIC", "lib", "libmsquic.dylib")
+        if isfile(lib_path)
+            push!(lib_names, lib_path)
+            println("Found MsQuic library in artifact: $lib_path")
+        end
+    catch e
+        # If there's an error with the artifact system, continue with the regular approach
+        @debug "Failed to load from artifact: $e"
+    end
+    
+    # Platform-specific library names
+    if Sys.isapple()
+        push!(lib_names, "libmsquic.dylib")
+        push!(lib_names, "/usr/local/lib/libmsquic.dylib")
+        push!(lib_names, "/opt/homebrew/lib/libmsquic.dylib")
+    elseif Sys.islinux()
+        push!(lib_names, "libmsquic.so")
+        push!(lib_names, "/usr/lib/libmsquic.so")
+        push!(lib_names, "/usr/local/lib/libmsquic.so")
+    elseif Sys.iswindows()
+        push!(lib_names, "msquic.dll")
+        push!(lib_names, "libmsquic.dll")
+    end
+    
+    # Try to load the library
+    loaded = false
+    for lib_name in lib_names
+        try
+            libmsquic_handle[] = Libdl.dlopen(lib_name)
+            loaded = true
+            println("Successfully loaded MsQuic library: $lib_name")
             break
+        catch e
+            # Continue trying other library names
         end
     end
     
-    if found_path == ""
-        # Return default path for error message
-        found_path = joinpath(@__DIR__, "..", "deps", "vcpkg", "installed", "arm64-osx", "lib", "libmsquic.dylib")
+    if !loaded
+        @warn "Could not load MsQuic library. Please ensure MsQuic is installed on your system."
+        @warn "Supported library names: $(join(lib_names, ", "))"
     end
-    
-    found_path
 end
 
-# Check if the library exists
-if !isfile(libmsquic)
-    @warn "MsQuic library not found at $libmsquic. Please install MsQuic via vcpkg."
-end
-
-# Check if the library exists
-if !isfile(libmsquic)
-    error("MsQuic library not found at $libmsquic")
+# Load the MsQuic library function
+function get_libmsquic()
+    if libmsquic_handle[] == C_NULL
+        error("MsQuic library not loaded. Please ensure MsQuic is installed.")
+    end
+    return libmsquic_handle[]
 end
 
 # MsQuic API version
@@ -290,7 +322,7 @@ const QUIC_PARAM_CONN_SETTINGS = 0x05000004
 # MsQuic API functions
 function msquic_open()
     api = Ref{Ptr{QUIC_API_TABLE}}(C_NULL)
-    status = ccall((:MsQuicOpenVersion, libmsquic), Cint, (UInt32, Ptr{Ptr{QUIC_API_TABLE}}), MSQUIC_API_VERSION, api)
+    status = ccall((:MsQuicOpenVersion, get_libmsquic()), Cint, (UInt32, Ptr{Ptr{QUIC_API_TABLE}}), MSQUIC_API_VERSION, api)
     return status, api[]
 end
 
@@ -323,7 +355,7 @@ function stream_receive_set_enabled(api_table::Ptr{QUIC_API_TABLE}, stream::HQUI
 end
 
 function msquic_close(api_table)
-    ccall((:MsQuicClose, libmsquic), Cvoid, (Ptr{QUIC_API_TABLE},), api_table)
+    ccall((:MsQuicClose, get_libmsquic()), Cvoid, (Ptr{QUIC_API_TABLE},), api_table)
 end
 
 # MsQuic API wrapper
@@ -581,6 +613,28 @@ function stream_callback(stream::Ptr{Cvoid}, context::Ptr{Cvoid}, event::Ptr{Cvo
         # - Offset 12: Flags (1 byte)
         # - Offset 16: Buffer pointer
         # For now, we'll just acknowledge all received data
+        # Try to extract the actual data
+        try
+            # Extract the buffer from the event
+            buffer = unsafe_load(reinterpret(Ptr{QUIC_BUFFER}, event + 16))
+            if buffer.Length > 0
+                # Read the data
+                data_bytes = unsafe_wrap(Vector{UInt8}, buffer.Buffer, buffer.Length)
+                # Store the data in the global storage
+                if haskey(stream_received_data, stream)
+                    # Append to existing data
+                    stream_received_data[stream] = vcat(stream_received_data[stream], data_bytes)
+                else
+                    # Create new data
+                    stream_received_data[stream] = data_bytes
+                end
+                # Print the received data
+                data_string = String(data_bytes)
+                println("Received data: $data_string")
+            end
+        catch e
+            # Handle the error in the receive
+        end
     elseif event_type == QUIC_STREAM_EVENT_TYPE_SEND_COMPLETE
         # Send complete
         stream_states[stream] = :send_complete

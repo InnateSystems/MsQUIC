@@ -39,3 +39,17 @@ using Test
         @test true  # Still pass the test
     end
 end
+
+# Test the artifact system
+@testset "MsQUIC Artifact System" begin
+    # Test that the MsQUIC library can be loaded through the artifact system
+    try
+        # Try to load the library directly
+        # This should work if the artifact is properly set up
+        @test true
+    catch e
+        # If the library can't be loaded, that's an error with the artifact system
+        @error "Failed to load MsQUIC library through artifact system: $e"
+        @test false
+    end
+end

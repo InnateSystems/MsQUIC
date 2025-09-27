@@ -1,12 +1,8 @@
-# Artifacts.toml - MsQUIC Binary Artifacts
-# This file will be populated with actual artifacts when they are built and hosted
+[[MsQUIC]]
+arch = "aarch64"
+git-tree-sha1 = "22047ea9546df2c0998d9def718b2044e598555c"
+os = "macos"
 
-# Example structure (uncomment and populate with real values when ready):
-# [[MsQUIC]]
-# arch = "x86_64"
-# git-tree-sha1 = "example_sha1_hash"
-# os = "macos"
-# 
-#     [[MsQUIC.download]]
-#     sha256 = "example_sha256_hash"
-#     url = "https://github.com/yourusername/MsQUIC.jl/releases/download/v0.1.0/MsQUIC.v2.4.8.x86_64-macos.tar.gz"
+    [[MsQUIC.download]]
+    sha256 = "45d843ce09ffbb2e477587f699fb8bdb6bf01018b97652488edfb28e6ab04977"
+    url = "/Users/arhik/.julia/dev/MsQUIC/artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"
