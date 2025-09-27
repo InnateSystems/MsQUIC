@@ -18,20 +18,19 @@ Initialize the MsQuic library when the module is loaded.
 function __init__()
     # Try to load the MsQuic library from artifacts first
     lib_names = String[]
-    
+
     # Try to load the library from the artifact
     try
         # Use the artifact string macro to get the path
-        lib_path = joinpath(artifact"MsQUIC", "lib", "libmsquic.dylib")
+        lib_path = joinpath(artifact"MsQUIC", "libmsquic.dylib")
         if isfile(lib_path)
             push!(lib_names, lib_path)
-            println("Found MsQuic library in artifact: $lib_path")
         end
     catch e
         # If there's an error with the artifact system, continue with the regular approach
         @debug "Failed to load from artifact: $e"
     end
-    
+
     # Platform-specific library names
     if Sys.isapple()
         push!(lib_names, "libmsquic.dylib")
@@ -45,20 +44,19 @@ function __init__()
         push!(lib_names, "msquic.dll")
         push!(lib_names, "libmsquic.dll")
     end
-    
+
     # Try to load the library
     loaded = false
     for lib_name in lib_names
         try
             libmsquic_handle[] = Libdl.dlopen(lib_name)
             loaded = true
-            println("Successfully loaded MsQuic library: $lib_name")
             break
         catch e
             # Continue trying other library names
         end
     end
-    
+
     if !loaded
         @warn "Could not load MsQuic library. Please ensure MsQuic is installed on your system."
         @warn "Supported library names: $(join(lib_names, ", "))"
@@ -330,7 +328,7 @@ end
 function set_param(api_table_ptr::Ptr{QUIC_API_TABLE}, handle::Ptr{Cvoid}, param::UInt32, buffer_length::UInt32, buffer::Ptr{Cvoid})
     # Get the API table
     api_table = unsafe_load(api_table_ptr)
-    return ccall(api_table.SetParam, Cint, (Ptr{Cvoid}, UInt32, UInt32, Ptr{Cvoid}), 
+    return ccall(api_table.SetParam, Cint, (Ptr{Cvoid}, UInt32, UInt32, Ptr{Cvoid}),
                  handle, param, buffer_length, buffer)
 end
 
@@ -389,7 +387,7 @@ mutable struct MsQuicRegistration
         app_name = "BareLibP2P"
         config = QUIC_REGISTRATION_CONFIG(Base.unsafe_convert(Cstring, app_name), 0)  # QUIC_EXECUTION_PROFILE_LOW_LATENCY
         # Call the RegistrationOpen function from the API table
-        status = ccall(api_table.RegistrationOpen, Cint, (Ref{QUIC_REGISTRATION_CONFIG}, Ptr{HQUIC}), 
+        status = ccall(api_table.RegistrationOpen, Cint, (Ref{QUIC_REGISTRATION_CONFIG}, Ptr{HQUIC}),
                        Ref(config), handle)
         if status != QUIC_STATUS_SUCCESS
             error("Failed to create MsQuic registration: $status")
@@ -416,16 +414,16 @@ const connection_shutdown_complete = Dict{Ptr{Cvoid}, Bool}()
 function connection_callback(connection::Ptr{Cvoid}, context::Ptr{Cvoid}, event::Ptr{Cvoid})::Cint
     # Get the event type
     event_type = unsafe_load(reinterpret(Ptr{Cint}, event))
-    
+
     #println("DEBUG: Connection callback called with connection: $connection, event type: $event_type")
-    
+
     # Print debug information
     println("DEBUG: Connection callback called with connection: $connection, event type: $event_type")
-    
+
     # Check if the connection is already closed
     # This is a simple check to prevent processing events after the connection is closed
     local conn_closed = (connection == C_NULL)
-    
+
     # Print debug information
     if haskey(connection_states, connection)
         local current_state = connection_states[connection]
@@ -433,7 +431,7 @@ function connection_callback(connection::Ptr{Cvoid}, context::Ptr{Cvoid}, event:
     else
         println("DEBUG: Connection state in callback: not in global state")
     end
-    
+
     if event_type == QUIC_CONNECTION_EVENT_TYPE_CONNECTED
         # Connection established
         if !conn_closed
@@ -578,7 +576,7 @@ function connection_callback(connection::Ptr{Cvoid}, context::Ptr{Cvoid}, event:
         # when we set the QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION flag
         # So we don't need to do anything here
     end
-    
+
     # Return success
     return QUIC_STATUS_SUCCESS
 end
@@ -591,9 +589,9 @@ const stream_received_data = Dict{Ptr{Cvoid}, Vector{UInt8}}()
 function stream_callback(stream::Ptr{Cvoid}, context::Ptr{Cvoid}, event::Ptr{Cvoid})::Cint
     # Get the event type
     event_type = unsafe_load(reinterpret(Ptr{Cint}, event))
-    
+
     #println("DEBUG: Stream callback called with stream: $stream, event type: $event_type")
-    
+
     if event_type == QUIC_STREAM_EVENT_TYPE_START_COMPLETE
         # Stream start complete
         stream_states[stream] = :started
@@ -651,7 +649,7 @@ function stream_callback(stream::Ptr{Cvoid}, context::Ptr{Cvoid}, event::Ptr{Cvo
             delete!(stream_received_data, stream)
         end
     end
-    
+
     # Return success
     return QUIC_STATUS_SUCCESS
 end
@@ -669,7 +667,7 @@ mutable struct MsQuicConnection
         # Create a callback handler
         callback_handler = @cfunction(connection_callback, Cint, (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}))
         # Call the ConnectionOpen function from the API table
-        status = ccall(api_table.ConnectionOpen, Cint, (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Ptr{Cvoid}}), 
+        status = ccall(api_table.ConnectionOpen, Cint, (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Ptr{Cvoid}}),
                        registration.handle, callback_handler, C_NULL, handle)
         if status != QUIC_STATUS_SUCCESS
             error("Failed to create MsQuic connection: $status")
@@ -684,25 +682,25 @@ function Base.close(conn::MsQuicConnection)
     if conn.handle != C_NULL
         # Get the API table
         api_table = unsafe_load(conn.api.api_table)
-        
+
         # Check if connection is already in shutdown state
         if haskey(connection_states, conn.handle)
             current_state = connection_states[conn.handle]
             println("DEBUG: Connection current state: $current_state")
         end
-        
+
         # Mark that we're initiating shutdown
         connection_shutdown_complete[conn.handle] = false
-        
+
         # Instead of directly calling ConnectionClose, we'll use ConnectionShutdown first
         # This is a more proper way to close connections in MsQuic
         println("DEBUG: Calling ConnectionShutdown...")
         shutdown_flags = QUIC_CONNECTION_SHUTDOWN_FLAG_NONE
         error_code = UInt64(0)  # Normal shutdown
-        ccall(api_table.ConnectionShutdown, Cvoid, (Ptr{Cvoid}, UInt32, UInt64), 
+        ccall(api_table.ConnectionShutdown, Cvoid, (Ptr{Cvoid}, UInt32, UInt64),
               conn.handle, shutdown_flags, error_code)
         println("DEBUG: ConnectionShutdown returned")
-        
+
         # Check if the connection is already in shutdown state
         if haskey(connection_states, conn.handle)
             current_state = connection_states[conn.handle]
@@ -714,7 +712,7 @@ function Base.close(conn::MsQuicConnection)
                 return
             end
         end
-        
+
         # Wait for the connection to be fully closed with a timeout
         timeout = 5.0  # 5 seconds timeout
         start_time = time()
@@ -726,7 +724,7 @@ function Base.close(conn::MsQuicConnection)
             # Small sleep to avoid busy waiting
             sleep(0.01)
         end
-        
+
         # Check if we timed out
         if !get(connection_shutdown_complete, conn.handle, false)
             println("DEBUG: Connection shutdown timed out, forcing close...")
@@ -736,7 +734,7 @@ function Base.close(conn::MsQuicConnection)
         else
             println("DEBUG: Connection shutdown completed normally")
         end
-        
+
         # Remove from global state if it exists
         if haskey(connection_states, conn.handle)
             println("DEBUG: Removing connection from global state")
@@ -745,13 +743,13 @@ function Base.close(conn::MsQuicConnection)
         if haskey(connection_shutdown_complete, conn.handle)
             delete!(connection_shutdown_complete, conn.handle)
         end
-        
+
         # Set the connection handle to NULL before calling ConnectionClose
         # This prevents the callback from being processed after the connection is closed
         handle = conn.handle
         conn.handle = C_NULL
         conn.state = :shutdown_complete
-        
+
         # Now call ConnectionClose to clean up resources
         # But only if the handle was valid
         if handle != C_NULL
@@ -759,7 +757,7 @@ function Base.close(conn::MsQuicConnection)
             ccall(api_table.ConnectionClose, Cvoid, (Ptr{Cvoid},), handle)
             println("DEBUG: ConnectionClose returned")
         end
-        
+
         # Note: We don't close the registration here as it might be used by other connections
         println("DEBUG: Connection close completed")
     end
@@ -820,7 +818,7 @@ mutable struct MsQuicConfiguration
         settings_size = UInt32(sizeof(QUIC_SETTINGS))
         context = C_NULL
         # Call the ConfigurationOpen function from the API table
-        status = ccall(api_table.ConfigurationOpen, Cint, (HQUIC, Ptr{QUIC_BUFFER}, UInt32, Ptr{QUIC_SETTINGS}, UInt32, Ptr{Cvoid}, Ptr{HQUIC}), 
+        status = ccall(api_table.ConfigurationOpen, Cint, (HQUIC, Ptr{QUIC_BUFFER}, UInt32, Ptr{QUIC_SETTINGS}, UInt32, Ptr{Cvoid}, Ptr{HQUIC}),
                        registration.handle, Ref(alpn_buffer), 1, Ref(settings), settings_size, context, handle)
         if status != QUIC_STATUS_SUCCESS
             error("Failed to create MsQuic configuration: $status")
@@ -848,7 +846,7 @@ mutable struct MsQuicConfiguration
         # the entire structure. In Julia, we're explicitly setting
         # all fields to zero/null to achieve the same effect
         # Call the ConfigurationLoadCredential function from the API table
-        status = ccall(api_table.ConfigurationLoadCredential, Cint, (HQUIC, Ref{QUIC_CREDENTIAL_CONFIG}), 
+        status = ccall(api_table.ConfigurationLoadCredential, Cint, (HQUIC, Ref{QUIC_CREDENTIAL_CONFIG}),
                        handle[], Ref(cred_config))
         if status != QUIC_STATUS_SUCCESS
             error("Failed to load credentials for MsQuic configuration: $status")
@@ -872,17 +870,17 @@ function connect(conn::MsQuicConnection, config::MsQuicConfiguration, server_nam
     conn.state = :connecting
     # Get the API table
     api_table = unsafe_load(conn.api.api_table)
-    
+
     # Set connection parameters like the Zig code does
     # Disable send buffering if needed (this is what the Zig code does)
     # For now, let's just try to set some basic parameters
-    
+
     # Call the ConnectionStart function from the API table
     # Convert server name to C string
     c_server_name = Base.unsafe_convert(Cstring, server_name)
     # Set address family (unspecified to let MsQuic choose)
     family = QUIC_ADDRESS_FAMILY_UNSPEC
-    status = ccall(api_table.ConnectionStart, Cint, (HQUIC, HQUIC, UInt32, Cstring, UInt16), 
+    status = ccall(api_table.ConnectionStart, Cint, (HQUIC, HQUIC, UInt32, Cstring, UInt16),
                    conn.handle, config.handle, family, c_server_name, server_port)
     # QUIC_STATUS_PENDING is normal for async operations, not an error
     # We should return true when the connection is initiated, even if it's pending
@@ -902,12 +900,12 @@ function connect_with_retry(config::MsQuicConfiguration, server_name::String, se
     # This ensures we have a clean connection state for each retry
     for attempt in 1:max_retries
         println("Connection attempt $attempt/$max_retries to $server_name:$server_port")
-        
+
         # Create new registration and connection for this attempt
         try
             registration = MsQuicRegistration(config.api)
             connection = MsQuicConnection(registration)
-            
+
             # Try to connect
             result = connect(connection, config, server_name, server_port)
             if result
@@ -926,7 +924,7 @@ function connect_with_retry(config::MsQuicConfiguration, server_name::String, se
                     end
                     sleep(0.1)
                 end
-                
+
                 # Check if connection was successful
                 if haskey(connection_states, connection.handle)
                     current_state = connection_states[connection.handle]
@@ -936,16 +934,16 @@ function connect_with_retry(config::MsQuicConfiguration, server_name::String, se
                     end
                 end
             end
-            
+
             # If we get here, the connection failed
             println("Connection attempt $attempt failed")
-            
+
             # Clean up resources
             if connection.handle != C_NULL
                 Base.close(connection)
             end
             Base.close(registration)
-            
+
             # Wait before retrying (except on the last attempt)
             if attempt < max_retries
                 println("Waiting $retry_delay seconds before retry...")
@@ -960,7 +958,7 @@ function connect_with_retry(config::MsQuicConfiguration, server_name::String, se
             end
         end
     end
-    
+
     println("All $max_retries connection attempts failed")
     return (nothing, nothing, false)  # Failure
 end
@@ -972,7 +970,7 @@ function shutdown(conn::MsQuicConnection)
         # Call the ConnectionShutdown function
         shutdown_flags = QUIC_CONNECTION_SHUTDOWN_FLAG_NONE
         error_code = UInt64(0)  # Normal shutdown
-        ccall(api_table.ConnectionShutdown, Cvoid, (Ptr{Cvoid}, UInt32, UInt64), 
+        ccall(api_table.ConnectionShutdown, Cvoid, (Ptr{Cvoid}, UInt32, UInt64),
               conn.handle, shutdown_flags, error_code)
         conn.state = :shutdown_initiated
     end
@@ -991,7 +989,7 @@ mutable struct MsQuicStream
         callback_handler = @cfunction(stream_callback, Cint, (HQUIC, Ptr{Cvoid}, Ptr{Cvoid}))
         # Call the StreamOpen function from the API table
         flags = QUIC_STREAM_OPEN_FLAG_NONE
-        status = ccall(api_table.StreamOpen, Cint, (HQUIC, UInt32, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{HQUIC}), 
+        status = ccall(api_table.StreamOpen, Cint, (HQUIC, UInt32, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{HQUIC}),
                        connection.handle, flags, callback_handler, C_NULL, handle)
         if status != QUIC_STATUS_SUCCESS
             error("Failed to create MsQuic stream: $status")
@@ -1058,7 +1056,7 @@ function shutdown_stream(stream::MsQuicStream)
         # Call the StreamShutdown function
         shutdown_flags = QUIC_STREAM_SHUTDOWN_FLAG_GRACEFUL
         error_code = UInt64(0)  # Normal shutdown
-        status = ccall(api_table.StreamShutdown, Cint, (Ptr{Cvoid}, UInt32, UInt64), 
+        status = ccall(api_table.StreamShutdown, Cint, (Ptr{Cvoid}, UInt32, UInt64),
                        stream.handle, shutdown_flags, error_code)
         if status == QUIC_STATUS_SUCCESS || status == QUIC_STATUS_PENDING
             stream.state = :shutdown_initiated
@@ -1080,7 +1078,7 @@ function send_data(stream::MsQuicStream, data::String)
     buffer = QUIC_BUFFER(data_length, pointer(data_bytes))
     # Call the StreamSend function from the API table
     flags = QUIC_SEND_FLAG_NONE
-    status = ccall(api_table.StreamSend, Cint, (HQUIC, Ptr{QUIC_BUFFER}, UInt32, UInt32, Ptr{Cvoid}), 
+    status = ccall(api_table.StreamSend, Cint, (HQUIC, Ptr{QUIC_BUFFER}, UInt32, UInt32, Ptr{Cvoid}),
                    stream.handle, Ref(buffer), 1, flags, C_NULL)
     # QUIC_STATUS_PENDING is normal for async operations, not an error
     # We should return true when the send is initiated, even if it's pending
@@ -1175,7 +1173,7 @@ function listen(listener::MsQuicListener, config::MsQuicConfiguration, port::UIn
     if listener.handle == C_NULL
         error("Listener is closed")
     end
-    
+
     # Start the listener
     status = listener_start(listener.api.api_table, listener.handle, config.handle, port)
     if status != QUIC_STATUS_SUCCESS
