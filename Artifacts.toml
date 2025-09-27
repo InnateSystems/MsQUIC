@@ -1,8 +1,8 @@
 [[MsQUIC]]
 arch = "aarch64"
-git-tree-sha1 = "b6bab1b50472efeb71e4ccf3a60e219fb7e6cae3"
+git-tree-sha1 = "6568c21d832619a7edfcf466bfb944b06734611d"
 os = "macos"
 
     [[MsQUIC.download]]
-    sha256 = "99e3462a3a21181c3015800f97b99ed9fc0430f4d9a98e994f5b74bafe5d4571"
+    sha256 = "3d8ff1f6671baa488efb9902a4f45109b45ad8b9d24d3137904fbf308653468e"
     url = "https://github.com/InnateSystems/MsQUIC/releases/download/v0.0.0-alpha/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"

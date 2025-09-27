@@ -1,32 +1,20 @@
-using Tar, SHA
+using Tar, SHA, Inflate
 
 # Function to create artifact for a single platform
 function create_msquic_artifact()
     # Copy the library file
-    libpath = "vcpkg/installed/arm64-osx/"
+    libpath = "deps/vcpkg/installed/arm64-osx/debug/lib/"
 
     # Create tar file
-    tar_file = "artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar"
-    Tar.create(libpath, tar_file)
-
-    # Compress with gzip
-    run(pipeline(`gzip -c $tar_file`, stdout="artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"))
-
-    # Remove uncompressed tar file
-    rm(tar_file)
+    tar_file = "msquic.v2.4.8.aarch64-apple-darwin.tar.gz"
+    run(`tar -C $libpath -czvf $tar_file .`)
 
     # Calculate SHA hashes
-    sha256_hash = bytes2hex(open(sha256, "artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"))
-
-    # For git-tree-sha1, we can use a simple approach
-    # In a real implementation, you would use Tar.tree_hash with decompressed content
-    sha1_hash = bytes2hex(open(sha1, "artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"))
+    sha256_hash = bytes2hex(open(sha256, tar_file))
+    sha1_hash = Tar.tree_hash(IOBuffer(inflate_gzip(tar_file)))
 
     println("SHA256: $sha256_hash")
     println("SHA1 (approximate git-tree-sha1): $sha1_hash")
-
-    # Clean up
-    rm(libpath, recursive=true)
 
     return sha1_hash, sha256_hash
 end
