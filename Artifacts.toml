@@ -1,8 +1,8 @@
 [[MsQUIC]]
 arch = "aarch64"
-git-tree-sha1 = "22047ea9546df2c0998d9def718b2044e598555c"
+git-tree-sha1 = "380145ee62ce324254293042ad39e14100b1e734"
 os = "macos"
 
     [[MsQUIC.download]]
-    sha256 = "45d843ce09ffbb2e477587f699fb8bdb6bf01018b97652488edfb28e6ab04977"
-    url = "/Users/arhik/.julia/dev/MsQUIC/artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"
+    sha256 = "09342110ecc124b5b77aa6343df4534e078bd9de3ee415babd230d4ad80f1770"
+    url = "https://github.com/yourusername/MsQUIC.jl/releases/download/v0.1.0/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"
