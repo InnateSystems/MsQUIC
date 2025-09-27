@@ -5,4 +5,4 @@ os = "macos"
 
     [[MsQUIC.download]]
     sha256 = "09342110ecc124b5b77aa6343df4534e078bd9de3ee415babd230d4ad80f1770"
-    url = "https://github.com/yourusername/MsQUIC.jl/releases/download/v0.1.0/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"
+    url = "https://github.com/InnateSystems/MsQUIC.jl/releases/download/v0.1.0/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"
