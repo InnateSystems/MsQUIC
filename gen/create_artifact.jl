@@ -10,7 +10,7 @@ function create_msquic_artifact()
     mkdir(lib_dir)
 
     # Copy the library file
-    cp("vcpkg/installed/arm64-osx/lib/libmsquic.dylib", joinpath(lib_dir, "libmsquic.dylib"))
+    cp("vcpkg/installed/arm64-osx/lib/libmsquic.2.4.8.dylib", joinpath(lib_dir, "libmsquic.dylib"))
 
     # Create tar file
     tar_file = "artifacts/msquic.v2.4.8.aarch64-apple-darwin.tar"
@@ -48,7 +48,7 @@ function generate_artifacts_toml(sha1_hash, sha256_hash)
 
         [[MsQUIC.download]]
         sha256 = "$sha256_hash"
-        url = "https://github.com/InnateSystems/MsQUIC.jl/releases/download/v0.0.0-alpha/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"
+        url = "https://github.com/InnateSystems/MsQUIC/releases/download/v0.0.0-alpha/msquic.v2.4.8.aarch64-apple-darwin.tar.gz"
     """
 
     # Write to Artifacts.toml
